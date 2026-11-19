@@ -1,0 +1,102 @@
+% Summary of a ForShor Challenge submission: TableGeneration/Submission/summary.tex
+% Text for people to read; nothing compiles or runs it. Self-contained (no other files).
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+
+\title{Rank 1's policy with a shift-padded $k=5$ top table}
+\author{davidyashgur}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Objective}
+Full order-finding board: minimise $Q \times T$ (live-qubit peak times single-run T count) of Shor's
+order-finding circuit at $n = 2048$, $\delta = 0.01$, on the IR ForShor prints under \texttt{--balanced}.
+
+\section*{Starting point and credits}
+\begin{itemize}
+  \item \textbf{Base policy:} \texttt{gghoryafi\_sub3} (pull request \#120), rank 1 of the full order-finding board
+        on 2026-11-18. Fourteen of the sixteen bands, and every table except the $k=5$ table, are taken from it unchanged.
+  \item \textbf{$k=5$ table:} the $k=5$ table of \texttt{npdeep\_sub1} (pull request \#107), points
+        $0, \infty, 2, 1, -1, -\tfrac12, \tfrac12, \tfrac14, -\tfrac14$ (consumption order), with one inserted
+        pair of operations (below). Its points and the rest of its program are unchanged.
+  \item \textbf{Shift-pair padding:} cf.\ Suresh, Courtney, Tao and Cao (2026), Appendix B, Theorem B.3
+        (two-integer profile): adding shift-left/shift-right pairs to a table raises its width profile to a larger
+        target at unchanged cost.
+\end{itemize}
+All reused policies are Apache 2.0 board submissions.
+
+\section*{Construction}
+Rank 1's main multiplication (operands padded to 2348 bits) splits into $k = 5$ pieces, then 4, then 4:
+\[ 2348 \xrightarrow{k=5} 481 \xrightarrow{k=4} 125 \xrightarrow{k=4} 36 \text{ (leaf)}. \]
+The child width of a level is the least register width at which every value the table's program ever holds fits.
+With the allowed points (0, $\infty$, $\pm 2^e$, $\pm 1/2^e$), the narrowest $k=5$ child at 2348 is 479, and the
+next possible width from points alone is 481: no point set gives 480.
+
+\paragraph{Why not 479 (the divisibility trap).} The next level cuts its operand into 4 pieces of $\lfloor w/4 \rfloor$
+bits, and the top piece takes the remainder. At $w = 481$ the pieces are $120, 120, 120, 121$; at $w = 479$ they are
+$119, 119, 119, 122$. The larger top piece makes the next child 126 instead of 125, which raises T by about 1.3\%
+and cancels the gain. A narrower width is not automatically better.
+
+\paragraph{Why 480.} At $w = 480$ the pieces are four even 120-bit limbs, so the next child stays at 125 and the leaf
+at 36, while the top level's padding falls from $5 \cdot 481 - 2348 = 57$ to $5 \cdot 480 - 2348 = 52$ bits.
+
+\paragraph{How 480 is reached.} Into \texttt{npdeep\_sub1}'s $k=5$ program (whose own child at 2348 is 479) we insert
+\[ \texttt{["shiftL", 2, 3]},\ \texttt{["shiftR", 2, 3]} \]
+before its 8th operation (index 7). Register 2 briefly holds its row times 8, then returns exactly; the program, its
+points and its result are unchanged, but the visited row is now 3 bits wider, so the exact child width at 2348 is 480.
+At the other widths this table serves: 588 gives 128 (rank 1's table: 129) and 551 gives 120 (unchanged).
+
+\paragraph{An open note on what this does.} The submission format ignores declared widths and derives the exact
+(least overflow-free) width from the program. Both exact-width definitions, the policy check's \texttt{tightWidth}
+(\texttt{TableGeneration/RecursiveCost/BandedPolicy/Tight.lean}, over \texttt{reachRows}: every row of every visited
+state) and ForShor's \texttt{exactSignedWidthOfWidths} (over \texttt{exactReachRows}), count the shifted intermediate
+state, so the padded width is the certified one. In effect the pair declares a width of 480: a real circuit may always
+use a register wider than the minimum, and shifts cost no gates.
+
+\section*{Prices}
+From \texttt{python starter.py price} (pack built 2026-11-12):
+\begin{itemize}
+  \item Full order finding: single run $T = 1{,}550{,}125{,}151{,}262$, $Q = 13{,}374$,
+        $Q \times T = 2.073137 \times 10^{16}$; main ladder $2348{:}5 \to 480{:}4 \to 125{:}4 \to 36{:}\text{leaf}$
+        (ForShor IR at exact widths, balanced split); end to end (386 trials) $5.98 \times 10^{14}$ T.
+  \item For comparison, \texttt{gghoryafi\_sub3}: $T = 1{,}550{,}136{,}682{,}782$, $Q = 13{,}382$,
+        $Q \times T = 2.074393 \times 10^{16}$. The change is $-8$ qubits and $-11{,}531{,}520$ T ($-0.061\%$ in the score);
+        almost all of the gain is qubits.
+  \item PhaseProduct board (2048, unchanged from the base): $T = 9{,}816{,}895$, $Q = 4{,}429$, ladder
+        $2048{:}7 \to 312{:}4 \to 83{:}3 \to 31{:}\text{leaf}$; the two engines agree.
+\end{itemize}
+
+\section*{What did not help}
+\begin{itemize}
+  \item Recombining the 23 distinct tables of the seven board policies (local search over bands and a dynamic
+        programme over one table per $k$ and the leaf cutoff): nothing below rank 1.
+  \item Padding every other table: 1{,}431 padded variants (each visited row of each table, shifted by 1 to 8 bits),
+        at every arity: only the $k=5$ padding at 2348 lowered $Q \times T$.
+  \item Using the narrower 479 child directly (the trap above).
+  \item Points $\pm 3$, $\pm\tfrac13$ would narrow some levels further but are not admitted by the table contract.
+\end{itemize}
+A lower bound (zero-cost table arithmetic, children at or above the narrowest allowed width, rank 1's arities) is
+$Q \times T \ge 2.0034 \times 10^{16}$; with free arithmetic alone rank 1 would score about $2.0076 \times 10^{16}$,
+so within this structure better widths leave at most about $0.2\%$.
+
+\section*{What is not proved}
+T counted in Python (Qualtran), not proved in Lean. Q is the live-qubit peak, a formula over the policy's widths,
+not proved in Lean for this policy. The policy was priced locally with the starter pack only; the Lean checks were not
+run locally. The board's own pricing is the one that counts. Search and pricing scripts were written with Claude Code
+(Anthropic).
+
+\section*{References}
+\begin{enumerate}
+  \item A.~Suresh, J.~M.~Courtney, R.~Tao and Y.~Cao, \emph{Formally verified harness for Shor's order finding
+        algorithm with $O(n^{2+\epsilon})$ gate cost}, arXiv:2611.20342 [quant-ph] (2026); Appendix B, Theorem B.3
+        (two-integer profile).
+  \item \texttt{gghoryafi\_sub3}, ForShor Challenge full order-finding board,
+        \texttt{zapatacomputing/forshor-submissions} pull request \#120 (Apache 2.0).
+  \item \texttt{npdeep\_sub1}, ForShor Challenge full order-finding board,
+        \texttt{zapatacomputing/forshor-submissions} pull request \#107 (Apache 2.0).
+\end{enumerate}
+
+\end{document}
