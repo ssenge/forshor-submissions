@@ -218,6 +218,21 @@
     "run_id": "44449927572",
     "created_at": "2026-11-19T03:20:01Z"
    }
+  },
+  {
+   "policy_id": "f82ac900e99358dc0a6644df990becce1985799e",
+   "digest": "9b174fcb8475cb52381edbd5086b527ad143ed4cd086f5f2275138e3f0c2def9",
+   "mode": "PhaseProduct",
+   "board": "pp",
+   "sha256": "b12b29d875f45c3022335049fa426052b18341e6a0ad90f2a0bef48e9a64a252",
+   "path": "results/policy-submissions/f82ac900e99358dc0a6644df990becce1985799e",
+   "source": {
+    "repository": "zapatacomputing/forshor-submissions",
+    "pr_number": 130,
+    "github_login": "gghoryafi",
+    "run_id": "44452992766",
+    "created_at": "2026-11-19T03:46:16Z"
+   }
   }
  ]
 }
